@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pile Driving Logger</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Pile Driving Logger</h1>
+
+  <form id="pileForm">
+    <input type="text" id="pileId" placeholder="Pile ID" required />
+    <input type="text" id="pileType" placeholder="Pile Type" />
+    <button type="submit">Start Recording</button>
+  </form>
+
+  <div id="recordingUI" style="display:none;">
+    <p>Total Blows: <span id="blowCount">0</span></p>
+    <p>BPM: <span id="bpm">0</span></p>
+    <p>Penetrated Length: <span id="penetration">0</span> ft</p>
+    <button id="stopBtn">Stop</button>
+    <button id="exportBtn">Export CSV</button>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="FileSaver.min.js"></script>
+</body>
+</html>
