@@ -31,8 +31,22 @@
     <button onclick="markHeight()">📏 Mark Current Surface Height</button>
     <button onclick="exportLog()">📤 Export CSV</button>
 
-    <!-- Horizontal pile visual for tapping/swiping -->
+    <!-- Horizontal pile visual -->
     <canvas id="pileVisual" width="300" height="120"></canvas>
+
+    <h2>Marked Foot Data</h2>
+    <table id="footTable" border="1" style="margin: 0 auto; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th>Blow #</th>
+          <th>Time</th>
+          <th>Surface Height (ft)</th>
+          <th>Blows/Min</th>
+          <th>Blows/Ft</th>
+        </tr>
+      </thead>
+      <tbody id="footTableBody"></tbody>
+    </table>
   </div>
 
   <!-- Load scripts LAST -->
