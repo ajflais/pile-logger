@@ -1,89 +1,118 @@
-let blowTimes = []; 
-let mediaStream = null;
-let audioContext, processor, mic;
-let threshold = 0.25;
-let running = false;
+let blowCount = 0;
+let startTime = null;
+let blows = [];
+let pileHeight = 0;
+let surfaceHeight = 0;
+let logData = [];
+let micMode = false;
+let micStream, audioContext, analyser, dataArray;
 
-document.getElementById('pileForm').addEventListener('submit', startRecording);
-document.getElementById('stopBtn').addEventListener('click', stopRecording);
-document.getElementById('exportBtn').addEventListener('click', exportCSV);
-
-function startRecording(e) {
-  e.preventDefault();
-  blowTimes = [];
-  running = true;
-  document.getElementById('pileForm').style.display = 'none';
-  document.getElementById('recordingUI').style.display = 'block';
-
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
-      mediaStream = stream;
-      audioContext = new AudioContext();
-      mic = audioContext.createMediaStreamSource(stream);
-      processor = audioContext.createScriptProcessor(2048, 1, 1);
-
-      mic.connect(processor);
-      processor.connect(audioContext.destination);
-
-      processor.onaudioprocess = e => {
-        let input = e.inputBuffer.getChannelData(0);
-        let peak = Math.max(...input.map(Math.abs));
-        let now = Date.now();
-        if (peak > threshold) {
-          if (blowTimes.length === 0 || (now - blowTimes[blowTimes.length - 1]) > 300) {
-            blowTimes.push(now);
-            updateDisplay();
-          }
-        }
-      };
-    });
-}
-
-function stopRecording() {
-  running = false;
-  mediaStream.getTracks().forEach(track => track.stop());
-  processor.disconnect();
-  mic.disconnect();
-}
-
-function updateDisplay() {
-  document.getElementById('blowCount').textContent = blowTimes.length;
-
-  if (blowTimes.length >= 2) {
-    let intervals = [];
-    for (let i = 1; i < blowTimes.length; i++) {
-      intervals.push((blowTimes[i] - blowTimes[i - 1]) / 1000);
-    }
-    let avg = intervals.reduce((a, b) => a + b) / intervals.length;
-    let bpm = 60 / avg;
-    document.getElementById('bpm').textContent = bpm.toFixed(1);
+function startLogging() {
+  pileHeight = parseFloat(document.getElementById('pileHeight').value);
+  if (isNaN(pileHeight) || pileHeight <= 0) {
+    alert('Enter a valid pile height.');
+    return;
   }
 
-  let penetration = (blowTimes.length * (1 / 12)).toFixed(2);
-  document.getElementById('penetration').textContent = penetration;
+  surfaceHeight = pileHeight;
+  document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('logger').style.display = 'block';
+  updateVisual();
+
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  micMode = mode === 'mic';
+  document.getElementById('tapButton').style.display = micMode ? 'none' : 'inline-block';
+
+  if (micMode) startMicDetection();
 }
 
-function exportCSV() {
-  let pileId = document.getElementById('pileId').value;
-  let pileType = document.getElementById('pileType').value;
-  let startTime = new Date(blowTimes[0]).toLocaleString();
-  let endTime = new Date(blowTimes[blowTimes.length - 1]).toLocaleString();
-  let rows = [
-    ['Pile ID', pileId],
-    ['Pile Type', pileType],
-    ['Start Time', startTime],
-    ['End Time', endTime],
-    ['Total Blows', blowTimes.length],
-    ['Penetration (ft)', (blowTimes.length * (1 / 12)).toFixed(2)],
-    [],
-    ['Blow #', 'Time (ms)']
-  ];
+function recordBlow() {
+  const now = Date.now();
+  if (!startTime) startTime = now;
+  blowCount++;
+  blows.push(now);
+  document.getElementById('blowCount').textContent = blowCount;
 
-  blowTimes.forEach((time, i) => {
-    rows.push([i + 1, time]);
+  const elapsedMin = (now - startTime) / 60000;
+  const bpm = blowCount / elapsedMin;
+  document.getElementById('bpm').textContent = bpm.toFixed(1);
+
+  const penetration = pileHeight - surfaceHeight;
+  const bpf = penetration > 0 ? blowCount / penetration : 0;
+  document.getElementById('bpf').textContent = bpf.toFixed(1);
+
+  logData.push({ blow: blowCount, time: new Date(now).toISOString(), height: surfaceHeight });
+}
+
+function markHeight() {
+  const newHeight = prompt('Enter current surface height (ft):');
+  const h = parseFloat(newHeight);
+  if (!isNaN(h) && h < surfaceHeight) {
+    surfaceHeight = h;
+    document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
+    updateVisual();
+  } else {
+    alert('Invalid or higher than previous height.');
+  }
+}
+
+function updateVisual() {
+  const canvas = document.getElementById('pileVisual');
+  const ctx = canvas.getContext('2d');
+  const fullHeight = 250;
+  const drivenHeight = ((pileHeight - surfaceHeight) / pileHeight) * fullHeight;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ccc';
+  ctx.fillRect(80, 0, 40, fullHeight);
+  ctx.fillStyle = '#0a0';
+  ctx.fillRect(80, fullHeight - drivenHeight, 40, drivenHeight);
+}
+
+function exportLog() {
+  let csv = "Blow,Time,Surface Height\n";
+  logData.forEach(row => {
+    csv += `${row.blow},${row.time},${row.height}\n`;
   });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  saveAs(blob, "pile_log.csv");
+}
 
-  let csv = rows.map(r => r.join(',')).join('\n');
-  let blob = new Blob([csv], { type: 'text/csv' });
-  saveAs(blob, `${pileId || 'pile'}_log.csv`);
+// Audio Mode Logic
+let lastBlowTime = 0;
+function startMicDetection() {
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    micStream = stream;
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    source.connect(analyser);
+    listenForBlows();
+  }).catch(err => {
+    alert("Microphone access denied or error.");
+  });
+}
+
+function listenForBlows() {
+  analyser.getByteTimeDomainData(dataArray);
+  let peak = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    const val = Math.abs(dataArray[i] - 128);
+    if (val > peak) peak = val;
+  }
+
+  const now = Date.now();
+  const timeSinceLastBlow = now - lastBlowTime;
+  const dB = 20 * Math.log10(peak / 128);
+
+  // Tune this based on test recordings
+  if (dB > -5 && timeSinceLastBlow > 1000) {
+    lastBlowTime = now;
+    recordBlow();
+  }
+
+  requestAnimationFrame(listenForBlows);
 }
