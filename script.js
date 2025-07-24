@@ -10,12 +10,10 @@ let micStream, audioContext, analyser, dataArray;
 const canvas = document.getElementById('pileVisual');
 const ctx = canvas.getContext('2d');
 canvas.width = 300;
-canvas.height = 120;  // taller for tick buttons
+canvas.height = 80;
 
 let viewStart = 0;       // The first foot shown in the view window
 const viewWidth = 10;    // Show 10 feet width at a time
-
-let tickPositions = [];  // store clickable tick buttons {x, y, radius, foot}
 
 function startLogging() {
   pileHeight = parseFloat(document.getElementById('pileHeight').value);
@@ -60,7 +58,7 @@ function recordBlow() {
 }
 
 function markHeight() {
-  alert('Tap one of the blue foot circles below the pile bar to set the current surface height.');
+  alert('Tap or swipe on the pile bar below to set the current surface height.');
 }
 
 function updateBPFandVisual() {
@@ -73,17 +71,17 @@ function updateBPFandVisual() {
 
 function drawHorizontalPile() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   const barStartX = 20;
   const barEndX = canvas.width - 20;
-  const barY = 30;        // bar near top
+  const barY = canvas.height / 2;
   const barHeight = 20;
 
-  // Draw gray bar
+  // Draw gray background bar
   ctx.fillStyle = '#ccc';
   ctx.fillRect(barStartX, barY - barHeight / 2, barEndX - barStartX, barHeight);
 
-  // Draw green driven portion
+  // Draw driven portion in green relative to visible window
+  // Calculate driven length in the view window range
   const windowEnd = viewStart + viewWidth;
   const visiblePenetrationStart = Math.max(viewStart, pileHeight - surfaceHeight);
   const visiblePenetrationEnd = Math.min(windowEnd, pileHeight);
@@ -97,66 +95,51 @@ function drawHorizontalPile() {
   ctx.fillStyle = '#0a0';
   ctx.fillRect(drivenStartPx, barY - barHeight / 2, drivenPixels, barHeight);
 
-  // Draw ticks every 1 ft, as circles below bar (y=70)
+  // Draw tick marks and labels every 1 ft (or 5 ft if preferred)
   ctx.fillStyle = '#000';
   ctx.font = '14px sans-serif';
   ctx.textAlign = 'center';
 
-  tickPositions = [];
-  const tickSpacingFeet = 1;
+  const tickSpacingFeet = 1; // change to 5 for fewer ticks
   const numTicks = Math.floor(viewWidth / tickSpacingFeet);
 
   for (let i = 0; i <= numTicks; i++) {
     const footMark = viewStart + i * tickSpacingFeet;
     const x = barStartX + (i * tickSpacingFeet / viewWidth) * (barEndX - barStartX);
-
-    // Draw tick line
     ctx.beginPath();
-    ctx.moveTo(x, barY + barHeight / 2);
-    ctx.lineTo(x, barY + barHeight / 2 + 10);
+    ctx.moveTo(x, barY - barHeight / 2);
+    ctx.lineTo(x, barY - barHeight / 2 - 10);
     ctx.stroke();
 
-    // Draw clickable circle (button) below tick line
-    const circleY = barY + barHeight / 2 + 25;
-    const radius = 8;
-    ctx.beginPath();
-    ctx.fillStyle = '#007bff';
-    ctx.arc(x, circleY, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw foot label inside circle
-    ctx.fillStyle = 'white';
-    ctx.fillText(`${Math.round(footMark)}`, x, circleY + 5);
-
-    tickPositions.push({ x, y: circleY, radius, foot: footMark });
+    ctx.fillText(`${Math.round(footMark)} ft`, x, barY - barHeight / 2 - 15);
   }
 }
 
+// Calculate height from click and update surfaceHeight
 function onPileClick(event) {
   const rect = canvas.getBoundingClientRect();
   const clickX = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
-  const clickY = (event.touches ? event.touches[0].clientY : event.clientY) - rect.top;
+  const barStartX = 20;
+  const barEndX = canvas.width - 20;
 
-  // Check if clicked on any tick circle button
-  for (let tick of tickPositions) {
-    const dx = clickX - tick.x;
-    const dy = clickY - tick.y;
-    if (dx * dx + dy * dy <= tick.radius * tick.radius) {
-      let newSurfaceHeight = pileHeight - tick.foot;
-      if (newSurfaceHeight < 0) newSurfaceHeight = 0;
-      if (newSurfaceHeight > pileHeight) newSurfaceHeight = pileHeight;
+  if (clickX < barStartX || clickX > barEndX) return;
 
-      if (newSurfaceHeight !== surfaceHeight) {
-        surfaceHeight = newSurfaceHeight;
-        document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
-        updateBPFandVisual();
-      }
-      return;
-    }
+  const relativeX = clickX - barStartX;
+  const clickedFeet = viewStart + (relativeX / (barEndX - barStartX)) * viewWidth;
+
+  // Convert clickedFeet to surfaceHeight (in pile coordinate system)
+  let newSurfaceHeight = pileHeight - clickedFeet;
+  if (newSurfaceHeight < 0) newSurfaceHeight = 0;
+  if (newSurfaceHeight > pileHeight) newSurfaceHeight = pileHeight;
+
+  if (newSurfaceHeight < surfaceHeight) {
+    surfaceHeight = newSurfaceHeight;
+    document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
+    updateBPFandVisual();
   }
-  // Ignore clicks outside tick buttons to prevent accidental height changes
 }
 
+// Swipe/drag logic
 let isDragging = false;
 let dragStartX = 0;
 let dragStartView = 0;
@@ -197,7 +180,7 @@ function handleDrag(deltaX) {
   drawHorizontalPile();
 }
 
-// Export CSV
+// Export CSV (no surface height restriction)
 function exportLog() {
   if (logData.length === 0) {
     alert("No data to export.");
@@ -205,7 +188,7 @@ function exportLog() {
   }
 
   if (!confirm("Export pile driving log CSV now?")) {
-    return;
+    return; // User canceled
   }
 
   let csvContent = "data:text/csv;charset=utf-8,Blow,Time,SurfaceHeight(ft)\n";
@@ -224,7 +207,7 @@ function exportLog() {
 
 function initPileCanvas() {
   canvas.width = 300;
-  canvas.height = 120;
+  canvas.height = 80;
   drawHorizontalPile();
 }
 
@@ -259,7 +242,7 @@ function listenForBlows() {
   const timeSinceLastBlow = now - lastBlowTime;
   const dB = 20 * Math.log10(peak / 128);
 
-  // Adjust threshold to suit your recorded range (~90-120dB)
+  // Adjust threshold (dB > -5 is approximate, tweak based on your testing)
   if (dB > -5 && timeSinceLastBlow > 1000) {
     lastBlowTime = now;
     recordBlow();
