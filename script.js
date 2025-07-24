@@ -145,15 +145,16 @@ function onPileClick(event) {
         const now = Date.now();
         const elapsedMin = startTime ? (now - startTime) / 60000 : 0;
         const bpm = elapsedMin > 0 ? blowCount / elapsedMin : 0;
+
         const penetration = pileHeight - newSurfaceHeight;
-        const bpf = penetration > 0 ? blowCount / penetration : 0;
+        const bpfVal = penetration > 0 ? blowCount / penetration : 0;
 
         const entry = {
           blow: blowCount,
           time: formatDateTime(now),
           height: newSurfaceHeight,
           bpm: bpm.toFixed(1),
-          bpf: bpf.toFixed(1)
+          bpf: penetration > 0 ? bpfVal.toFixed(1) : '0.0'
         };
 
         footLogData.push(entry);
