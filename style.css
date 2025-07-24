@@ -1,28 +1,15 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: sans-serif;
   text-align: center;
-  padding: 20px;
-  background: #f9f9f9;
+  padding: 10px;
+  max-width: 800px;
+  margin: auto;
 }
 
-button {
-  margin: 10px;
-  padding: 12px 20px;
-  font-size: 16px;
-  cursor: pointer;
+canvas {
+  border: 1px solid #000;
+  touch-action: pan-x;
+  cursor: grab;
+  margin-top: 10px;
 }
 
-input[type="number"] {
-  padding: 6px;
-  margin: 5px;
-  font-size: 16px;
-  width: 100px;
-}
-
-#pileVisual {
-  border: 1px solid #333;
-  background: white;
-  margin-top: 20px;
-  touch-action: none; /* helps with touch dragging */
-  user-select: none;
-}
