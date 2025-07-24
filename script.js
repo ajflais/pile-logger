@@ -7,6 +7,9 @@ let logData = [];
 let micMode = false;
 let micStream, audioContext, analyser, dataArray;
 
+const canvas = document.getElementById('pileVisual');
+const ctx = canvas.getContext('2d');
+
 function startLogging() {
   pileHeight = parseFloat(document.getElementById('pileHeight').value);
   if (isNaN(pileHeight) || pileHeight <= 0) {
@@ -18,11 +21,16 @@ function startLogging() {
   document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
   document.getElementById('setup').style.display = 'none';
   document.getElementById('logger').style.display = 'block';
-  updateVisual();
+  blowCount = 0;
+  startTime = null;
+  blows = [];
+  logData = [];
 
   const mode = document.querySelector('input[name="mode"]:checked').value;
   micMode = mode === 'mic';
   document.getElementById('tapButton').style.display = micMode ? 'none' : 'inline-block';
+
+  initPileCanvas();
 
   if (micMode) startMicDetection();
 }
@@ -38,48 +46,98 @@ function recordBlow() {
   const bpm = blowCount / elapsedMin;
   document.getElementById('bpm').textContent = bpm.toFixed(1);
 
-  const penetration = pileHeight - surfaceHeight;
-  const bpf = penetration > 0 ? blowCount / penetration : 0;
-  document.getElementById('bpf').textContent = bpf.toFixed(1);
+  updateBPFandVisual();
 
   logData.push({ blow: blowCount, time: new Date(now).toISOString(), height: surfaceHeight });
 }
 
 function markHeight() {
-  const newHeight = prompt('Enter current surface height (ft):');
-  const h = parseFloat(newHeight);
-  if (!isNaN(h) && h < surfaceHeight) {
-    surfaceHeight = h;
-    document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
-    updateVisual();
-  } else {
-    alert('Invalid or higher than previous height.');
+  alert('Tap or swipe on the pile bar below to set the current surface height.');
+}
+
+function updateBPFandVisual() {
+  const penetration = pileHeight - surfaceHeight;
+  const bpf = penetration > 0 ? blowCount / penetration : 0;
+  document.getElementById('bpf').textContent = bpf.toFixed(1);
+
+  drawHorizontalPile();
+}
+
+// ----------- Canvas drawing and interaction -----------
+
+function drawHorizontalPile() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const barStartX = 20;
+  const barEndX = canvas.width - 20;
+  const barY = canvas.height / 2;
+  const barHeight = 20;
+  const totalLength = pileHeight;
+
+  // Draw gray background bar
+  ctx.fillStyle = '#ccc';
+  ctx.fillRect(barStartX, barY - barHeight / 2, barEndX - barStartX, barHeight);
+
+  // Draw driven portion in green
+  const drivenLength = totalLength - surfaceHeight;
+  const drivenPixels = ((drivenLength / totalLength) * (barEndX - barStartX));
+  ctx.fillStyle = '#0a0';
+  ctx.fillRect(barStartX, barY - barHeight / 2, drivenPixels, barHeight);
+
+  // Draw tick marks and labels every 5 ft
+  ctx.fillStyle = '#000';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  const tickSpacing = 5;
+  const numTicks = Math.floor(totalLength / tickSpacing);
+
+  for (let i = 0; i <= numTicks; i++) {
+    const x = barStartX + (i * tickSpacing / totalLength) * (barEndX - barStartX);
+    ctx.beginPath();
+    ctx.moveTo(x, barY - barHeight / 2);
+    ctx.lineTo(x, barY - barHeight / 2 - 8);
+    ctx.stroke();
+
+    ctx.fillText(`${i * tickSpacing} ft`, x, barY - barHeight / 2 - 12);
   }
 }
 
-function updateVisual() {
-  const canvas = document.getElementById('pileVisual');
-  const ctx = canvas.getContext('2d');
-  const fullHeight = 250;
-  const drivenHeight = ((pileHeight - surfaceHeight) / pileHeight) * fullHeight;
+function onPileClick(event) {
+  const rect = canvas.getBoundingClientRect();
+  const clickX = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
+  const barStartX = 20;
+  const barEndX = canvas.width - 20;
+  const totalLength = pileHeight;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ccc';
-  ctx.fillRect(80, 0, 40, fullHeight);
-  ctx.fillStyle = '#0a0';
-  ctx.fillRect(80, fullHeight - drivenHeight, 40, drivenHeight);
+  if (clickX < barStartX || clickX > barEndX) return;
+
+  const relativeX = clickX - barStartX;
+  const newHeight = totalLength - ((relativeX / (barEndX - barStartX)) * totalLength);
+
+  // Snap to nearest foot (change to 5 if you want 5 ft increments)
+  const snappedHeight = Math.round(newHeight);
+
+  if (snappedHeight >= 0 && snappedHeight <= totalLength && snappedHeight < surfaceHeight) {
+    surfaceHeight = snappedHeight;
+    document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
+    updateBPFandVisual();
+  }
 }
 
-function exportLog() {
-  let csv = "Blow,Time,Surface Height\n";
-  logData.forEach(row => {
-    csv += `${row.blow},${row.time},${row.height}\n`;
-  });
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  saveAs(blob, "pile_log.csv");
+function initPileCanvas() {
+  canvas.width = 300;
+  canvas.height = 80;
+  drawHorizontalPile();
 }
 
-// Audio Mode Logic
+// Add event listeners for click and touch
+canvas.addEventListener('click', onPileClick);
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  onPileClick(e);
+});
+
+// ----------- Audio mode logic -----------
+
 let lastBlowTime = 0;
 function startMicDetection() {
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -93,6 +151,7 @@ function startMicDetection() {
     listenForBlows();
   }).catch(err => {
     alert("Microphone access denied or error.");
+    console.error(err);
   });
 }
 
@@ -108,7 +167,7 @@ function listenForBlows() {
   const timeSinceLastBlow = now - lastBlowTime;
   const dB = 20 * Math.log10(peak / 128);
 
-  // Tune this based on test recordings
+  // Adjust threshold (dB > -5 is approximate, tweak based on your testing)
   if (dB > -5 && timeSinceLastBlow > 1000) {
     lastBlowTime = now;
     recordBlow();
