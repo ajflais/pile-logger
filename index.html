@@ -9,32 +9,29 @@
 <body>
   <h1>PILECO D30-32 Pile Logger</h1>
 
-  <label for="pileId">Pile Name/ID:</label>
-  <input type="text" id="pileId" placeholder="e.g., Bent 3 Pile #2" />
-
-  <label for="pileHeight">Pile Height (ft):</label>
-  <input type="number" id="pileHeight" min="1" />
-
-  <div>
-    <button onclick="startManualLogging()">Manual Mode</button>
-    <button onclick="startAutoLogging()">Microphone Mode</button>
+  <div class="mode-buttons">
+    <button onclick="setMode('manual')">Manual Mode</button>
+    <button onclick="setMode('audio')">Audio Mode</button>
   </div>
 
-  <div id="manualControls" style="display:none;">
-    <p>Surface Height: <span id="surfaceHeight">-</span> ft</p>
-    <button onclick="recordManualBlow()">Tap for Blow</button>
-    <button onclick="exportLog()">Export CSV</button>
-    <canvas id="pileCanvas" width="400" height="100"></canvas>
+  <div class="setup">
+    <label>Initial Pile Height (ft):</label>
+    <input type="number" id="pileHeightInput" min="1" max="200" value="100" />
+    <button onclick="startLogging()">Start Logging</button>
   </div>
 
-  <div id="autoControls" style="display:none;">
-    <p>Surface Height: <span id="surfaceHeight">-</span> ft</p>
-    <p>Blows: <span id="autoBlowCount">0</span> | BPM: <span id="bpm">0</span></p>
-    <button onclick="stopAutoLogging()">Stop</button>
-    <button onclick="exportLog()">Export CSV</button>
-    <canvas id="pileCanvas" width="400" height="100"></canvas>
+  <div class="logger">
+    <p>Mode: <span id="modeDisplay">N/A</span></p>
+    <p>Blow Count: <span id="blowCount">0</span></p>
+    <p>Blows Per Minute (BPM): <span id="bpm">0</span></p>
+    <p>Current Surface Height: <span id="surfaceHeight">-</span> ft</p>
+    <canvas id="pileCanvas" width="600" height="100"></canvas>
+    <div class="pile-instructions">Swipe to move left/right. Tap a number to mark surface height.</div>
   </div>
 
+  <button onclick="exportCSV()">Export CSV</button>
+
+  <script src="FileSaver.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
