@@ -221,7 +221,7 @@ function exportLog() {
 
   let csvContent = "data:text/csv;charset=utf-8,Blow,Time,SurfaceHeight(ft),BPM,BPF\n";
   footLogData.forEach(row => {
-    csvContent += `${row.blow},${row.time},${row.height},${row.bpm},${row.bpf}\n`;
+    csvContent += `${row.blow},${row.time},${Math.round(row.height)},${row.bpm},${row.bpf}\n`;
   });
 
   const encodedUri = encodeURI(csvContent);
