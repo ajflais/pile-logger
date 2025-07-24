@@ -1,162 +1,130 @@
-let mode = null;
+let blowData = [];
+let startTime;
+let interval;
 let blowCount = 0;
-let logData = [];
-let pileHeight = 100;
-let surfaceHeight = 100;
-let blowTimes = [];
-let pixelsPerFoot = 10;
-let offsetX = 0;
-
-const canvas = document.getElementById("pileCanvas");
-const ctx = canvas.getContext("2d");
-
-function setMode(selectedMode) {
-  mode = selectedMode;
-  document.getElementById("modeDisplay").textContent = mode;
-}
+let pileLength = 100;
+let currentHeight = null;
+let canvas, ctx;
+let scrollX = 0;
+let dragging = false;
+let dragStartX = 0;
+let startScrollX = 0;
 
 function startLogging() {
+  const pileName = document.getElementById("pileName").value;
+  const initialHeight = parseInt(document.getElementById("initialHeight").value);
+
+  if (!pileName || isNaN(initialHeight)) {
+    alert("Please enter both pile name and initial height.");
+    return;
+  }
+
+  document.getElementById("loggingSection").style.display = "block";
+  document.getElementById("currentHeight").textContent = "—";
+  blowData = [];
   blowCount = 0;
-  logData = [];
-  blowTimes = [];
+  startTime = new Date();
+  document.getElementById("blowCount").textContent = "0";
+  document.getElementById("bpm").textContent = "0";
 
-  pileHeight = parseInt(document.getElementById("pileHeightInput").value);
-  surfaceHeight = pileHeight;
+  currentHeight = null;
+  pileLength = initialHeight;
 
-  document.getElementById("blowCount").textContent = blowCount;
-  document.getElementById("surfaceHeight").textContent = surfaceHeight;
+  canvas = document.getElementById("pileCanvas");
+  ctx = canvas.getContext("2d");
+  drawPile();
 
-  redrawPile();
+  canvas.addEventListener("mousedown", startDrag);
+  canvas.addEventListener("mousemove", duringDrag);
+  canvas.addEventListener("mouseup", endDrag);
+  canvas.addEventListener("touchstart", startDrag);
+  canvas.addEventListener("touchmove", duringDrag);
+  canvas.addEventListener("touchend", endDrag);
+  canvas.addEventListener("click", handleTap);
 
-  if (mode === "manual") {
-    canvas.addEventListener("click", handleCanvasClick);
-  }
-
-  if (mode === "audio") {
-    setupMic();
-  }
+  if (interval) clearInterval(interval);
+  interval = setInterval(updateBPM, 1000);
 }
 
-function redrawPile() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const visibleFeet = canvas.width / pixelsPerFoot;
-
-  const startFoot = Math.floor(offsetX / pixelsPerFoot);
-  const endFoot = startFoot + Math.floor(visibleFeet);
-
-  for (let i = startFoot; i <= endFoot; i++) {
-    const x = i * pixelsPerFoot - offsetX;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, 100);
-    ctx.strokeStyle = i === (pileHeight - surfaceHeight) ? "red" : "#000";
-    ctx.stroke();
-
-    // Draw label box
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(x - 10, 40, 20, 20);
-
-    ctx.fillStyle = "black";
-    ctx.font = "12px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(i, x, 55);
-  }
-}
-
-function handleCanvasClick(event) {
-  const rect = canvas.getBoundingClientRect();
-  const x = event.clientX - rect.left + offsetX;
-
-  const newDriven = Math.round(x / pixelsPerFoot);
-  surfaceHeight = Math.max(0, pileHeight - newDriven);
-  surfaceHeight = Math.round(surfaceHeight);
-
-  document.getElementById("surfaceHeight").textContent = surfaceHeight;
-
-  const time = new Date().toLocaleTimeString();
-  logData.push({ blow: blowCount + " (manual height)", time, height: surfaceHeight });
-
-  redrawPile();
-}
-
-canvas.addEventListener("touchstart", handleSwipeStart);
-canvas.addEventListener("touchmove", handleSwipeMove);
-let swipeStartX = null;
-
-function handleSwipeStart(e) {
-  swipeStartX = e.touches[0].clientX;
-}
-
-function handleSwipeMove(e) {
-  if (swipeStartX === null) return;
-  const dx = e.touches[0].clientX - swipeStartX;
-  offsetX -= dx;
-  offsetX = Math.max(0, offsetX);
-  swipeStartX = e.touches[0].clientX;
-  redrawPile();
-}
-
-function logBlow() {
+function markBlow() {
+  const now = new Date();
+  blowData.push({ time: now.toISOString(), height: currentHeight });
   blowCount++;
-  document.getElementById("blowCount").textContent = blowCount;
-
-  const time = new Date();
-  blowTimes.push(time);
-  updateBPM();
-
-  logData.push({
-    blow: blowCount,
-    time: time.toLocaleTimeString(),
-    height: surfaceHeight
-  });
+  document.getElementById("blowCount").textContent = blowCount.toString();
 }
 
 function updateBPM() {
   const now = new Date();
-  blowTimes = blowTimes.filter(t => (now - t) <= 60000);
-  const bpm = blowTimes.length;
-  document.getElementById("bpm").textContent = bpm;
+  const oneMinuteAgo = new Date(now - 60000);
+  const recentBlows = blowData.filter(b => new Date(b.time) > oneMinuteAgo);
+  document.getElementById("bpm").textContent = recentBlows.length.toString();
 }
 
-function setupMic() {
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const mic = ctx.createMediaStreamSource(stream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    mic.connect(analyser);
+function stopLogging() {
+  clearInterval(interval);
+  const pileName = document.getElementById("pileName").value;
+  let csv = "Pile Name,Time,Height (ft)\n";
+  blowData.forEach(b => {
+    csv += `${pileName},${b.time},${b.height || ""}\n`;
+  });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  saveAs(blob, `${pileName}_log.csv`);
+}
 
-    const data = new Uint8Array(analyser.frequencyBinCount);
+function markBearing() {
+  alert("Bearing reached. You can stop logging.");
+}
 
-    function detect() {
-      analyser.getByteFrequencyData(data);
-      const volume = Math.max(...data);
+function drawPile() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const ftWidth = 60;
+  const visibleFt = Math.ceil(canvas.width / ftWidth);
+  const startFt = Math.floor(scrollX / ftWidth);
+  const endFt = startFt + visibleFt;
 
-      if (volume > 90) {
-        const now = Date.now();
-        if (!detect.last || now - detect.last > 1000) {
-          detect.last = now;
-          logBlow();
-        }
-      }
-      requestAnimationFrame(detect);
+  for (let i = startFt; i <= endFt; i++) {
+    const x = i * ftWidth - scrollX;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.strokeStyle = "gray";
+    ctx.stroke();
+
+    ctx.fillStyle = "black";
+    ctx.fillText(pileLength - i + " ft", x + 2, 20);
+
+    // Highlight if selected
+    if (pileLength - i === currentHeight) {
+      ctx.fillStyle = "red";
+      ctx.fillRect(x, 30, ftWidth, canvas.height - 30);
     }
-
-    detect();
-  });
+  }
 }
 
-function exportCSV() {
-  if (logData.length === 0) {
-    alert("No data to export.");
-    return;
-  }
+function handleTap(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left + scrollX;
+  const ftWidth = 60;
+  const clickedFt = Math.floor(x / ftWidth);
+  currentHeight = Math.round(pileLength - clickedFt);
+  document.getElementById("currentHeight").textContent = currentHeight;
+  drawPile();
+}
 
-  let csv = "Blow #,Time,Height (ft)\n";
-  logData.forEach(row => {
-    csv += `${row.blow},${row.time},${Math.round(row.height)}\n`;
-  });
+function startDrag(e) {
+  dragging = true;
+  dragStartX = e.touches ? e.touches[0].clientX : e.clientX;
+  startScrollX = scrollX;
+}
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  saveAs(blob, "pile_log.csv");
+function duringDrag(e) {
+  if (!dragging) return;
+  const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+  const dx = dragStartX - currentX;
+  scrollX = Math.max(0, startScrollX + dx);
+  drawPile();
+}
+
+function endDrag() {
+  dragging = false;
 }
