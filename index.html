@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PILECO D30-32 Pile Logger</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -31,10 +31,11 @@
     <button onclick="markHeight()">📏 Mark Current Surface Height</button>
     <button onclick="exportLog()">📤 Export CSV</button>
 
-    <canvas id="pileVisual" width="200" height="300"></canvas>
+    <!-- Horizontal pile visual for tapping/swiping -->
+    <canvas id="pileVisual" width="300" height="80"></canvas>
   </div>
 
-  <!-- ✅ Load JavaScript LAST so all HTML elements are ready -->
+  <!-- Load scripts LAST -->
   <script src="script.js"></script>
   <script src="FileSaver.min.js"></script>
 </body>
