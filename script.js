@@ -158,7 +158,7 @@ function onPileClick(event) {
         row.innerHTML = `
           <td>${entry.blow}</td>
           <td>${entry.time}</td>
-          <td>${entry.height.toFixed(2)}</td>
+          <td>${Math.round(entry.height)}</td>
           <td>${entry.bpm}</td>
           <td>${entry.bpf}</td>
         `;
