@@ -8,7 +8,7 @@ let footLogData = [];
 let micMode = false;
 let micStream, audioContext, analyser, dataArray;
 
-let pileName = '';
+let pileName = '';  // NEW global variable for pile name
 
 const canvas = document.getElementById('pileVisual');
 const ctx = canvas.getContext('2d');
@@ -18,12 +18,10 @@ canvas.height = 120;
 let viewStart = 0;
 const viewWidth = 10;
 let tickPositions = [];
-let lastFootBlowIndex = 0;
-let lastFootHeight = 0;
 
 function startLogging() {
   pileName = document.getElementById('pileName').value.trim() || 'Unnamed Pile';
-  document.getElementById('displayPileName').textContent = `Pile Name: ${pileName}`;
+  document.getElementById('displayPileName').textContent = Pile Name: ${pileName};
 
   pileHeight = parseFloat(document.getElementById('pileHeight').value);
   if (isNaN(pileHeight) || pileHeight <= 0) {
@@ -41,8 +39,6 @@ function startLogging() {
   logData = [];
   footLogData = [];
   viewStart = 0;
-  lastFootBlowIndex = 0;
-  lastFootHeight = surfaceHeight;
 
   const mode = document.querySelector('input[name="mode"]:checked').value;
   micMode = mode === 'mic';
@@ -127,7 +123,7 @@ function drawHorizontalPile() {
     ctx.fill();
 
     ctx.fillStyle = 'white';
-    ctx.fillText(`${Math.round(footMark)}`, x, circleY + 5);
+    ctx.fillText(${Math.round(footMark)}, x, circleY + 5);
 
     tickPositions.push({ x, y: circleY, radius, foot: footMark });
   }
@@ -153,40 +149,29 @@ function onPileClick(event) {
         const penetration = pileHeight - newSurfaceHeight;
         const bpfVal = penetration > 0 ? blowCount / penetration : 0;
 
-        const blowsSince = blowCount - lastFootBlowIndex;
-        const timeSince = blows.length >= lastFootBlowIndex ? (blows[blows.length - 1] - blows[lastFootBlowIndex]) / 60000 : 0;
-        const recentBpm = timeSince > 0 ? blowsSince / timeSince : 0;
-        const recentBpf = newSurfaceHeight !== lastFootHeight ? blowsSince / (lastFootHeight - newSurfaceHeight) : 0;
-
         const entry = {
           blow: blowCount,
           time: formatDateTime(now),
           height: newSurfaceHeight,
           bpm: bpm.toFixed(1),
-          bpf: bpfVal.toFixed(1),
-          recentBpm: recentBpm.toFixed(1),
-          recentBpf: recentBpf.toFixed(1)
+          bpf: penetration > 0 ? bpfVal.toFixed(1) : '0.0'
         };
 
         footLogData.push(entry);
 
         const tableBody = document.getElementById('footTableBody');
         const row = document.createElement('tr');
-        row.innerHTML = `
+        row.innerHTML = 
           <td>${pileName}</td>
           <td>${entry.blow}</td>
           <td>${entry.time}</td>
           <td>${Math.round(entry.height)}</td>
-          <td>${entry.recentBpm}</td>
-          <td>${entry.recentBpf}</td>
           <td>${entry.bpm}</td>
           <td>${entry.bpf}</td>
-        `;
+        ;
         tableBody.insertBefore(row, tableBody.firstChild);
 
         surfaceHeight = newSurfaceHeight;
-        lastFootBlowIndex = blowCount;
-        lastFootHeight = newSurfaceHeight;
         document.getElementById('surfaceHeight').textContent = Math.round(surfaceHeight);
         updateBPFandVisual();
       }
@@ -241,15 +226,15 @@ function exportLog() {
 
   if (!confirm("Export pile driving log CSV now?")) return;
 
-  let csvContent = "data:text/csv;charset=utf-8,PileName,Blow,Time,SurfaceHeight(ft),RecentBPM,RecentBPF,BPM,BPF\n";
+  let csvContent = "data:text/csv;charset=utf-8,PileName,Blow,Time,SurfaceHeight(ft),BPM,BPF\n";
   footLogData.forEach(row => {
-    csvContent += `${pileName},${row.blow},${row.time},${Math.round(row.height)},${row.recentBpm},${row.recentBpf},${row.bpm},${row.bpf}\n`;
+    csvContent += ${pileName},${row.blow},${row.time},${Math.round(row.height)},${row.bpm},${row.bpf}\n;
   });
 
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `pile_log_${new Date().toISOString().slice(0,10)}.csv`);
+  link.setAttribute("download", pile_log_${new Date().toISOString().slice(0,10)}.csv);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
