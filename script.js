@@ -25,7 +25,7 @@ function startLogging() {
   }
 
   surfaceHeight = pileHeight;
-  document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
+  document.getElementById('surfaceHeight').textContent = Math.round(surfaceHeight);
   document.getElementById('setup').style.display = 'none';
   document.getElementById('logger').style.display = 'block';
   blowCount = 0;
@@ -165,7 +165,7 @@ function onPileClick(event) {
         tableBody.insertBefore(row, tableBody.firstChild);
 
         surfaceHeight = newSurfaceHeight;
-        document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
+        document.getElementById('surfaceHeight').textContent = Math.round(surfaceHeight);
         updateBPFandVisual();
       }
       return;
