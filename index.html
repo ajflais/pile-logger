@@ -2,41 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PILECO D30-32 Pile Logger</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>PILECO D30-32 Pile Logger</h1>
 
-  <div id="setup">
-    <label for="pileHeight">Initial Pile Height (ft):</label>
-    <input type="number" id="pileHeight" min="1" step="0.1" />
+  <label for="pileId">Pile Name/ID:</label>
+  <input type="text" id="pileId" placeholder="e.g., Bent 3 Pile #2" />
 
-    <div>
-      <label><input type="radio" name="mode" value="manual" checked /> Manual Tap Mode</label>
-      <label><input type="radio" name="mode" value="mic" /> Microphone Mode</label>
-    </div>
+  <label for="pileHeight">Pile Height (ft):</label>
+  <input type="number" id="pileHeight" min="1" />
 
-    <button onclick="startLogging()">Start Logging</button>
+  <div>
+    <button onclick="startManualLogging()">Manual Mode</button>
+    <button onclick="startAutoLogging()">Microphone Mode</button>
   </div>
 
-  <div id="logger" style="display: none;">
-    <p>Total Blows: <span id="blowCount">0</span></p>
-    <p>Blows per Minute: <span id="bpm">0</span></p>
-    <p>Surface Height: <span id="surfaceHeight">0</span> ft</p>
-    <p>Blows per Foot: <span id="bpf">0</span></p>
-
-    <button id="tapButton" onclick="recordBlow()">➕ Tap to Log Blow</button>
-    <button onclick="markHeight()">📏 Mark Current Surface Height</button>
-    <button onclick="exportLog()">📤 Export CSV</button>
-
-    <!-- Horizontal pile visual for tapping/swiping -->
-    <canvas id="pileVisual" width="300" height="120"></canvas>
+  <div id="manualControls" style="display:none;">
+    <p>Surface Height: <span id="surfaceHeight">-</span> ft</p>
+    <button onclick="recordManualBlow()">Tap for Blow</button>
+    <button onclick="exportLog()">Export CSV</button>
+    <canvas id="pileCanvas" width="400" height="100"></canvas>
   </div>
 
-  <!-- Load scripts LAST -->
-  <script src="FileSaver.min.js"></script>
+  <div id="autoControls" style="display:none;">
+    <p>Surface Height: <span id="surfaceHeight">-</span> ft</p>
+    <p>Blows: <span id="autoBlowCount">0</span> | BPM: <span id="bpm">0</span></p>
+    <button onclick="stopAutoLogging()">Stop</button>
+    <button onclick="exportLog()">Export CSV</button>
+    <canvas id="pileCanvas" width="400" height="100"></canvas>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
