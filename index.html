@@ -34,7 +34,6 @@
     <button onclick="markHeight()">📏 Mark Current Surface Height</button>
     <button onclick="exportLog()">📤 Export CSV</button>
 
-    <!-- Horizontal pile visual -->
     <canvas id="pileVisual" width="300" height="120"></canvas>
 
     <h2 id="displayPileName"></h2>
@@ -49,13 +48,14 @@
           <th>Surface Height (ft)</th>
           <th>Blows/Min</th>
           <th>Blows/Ft</th>
+          <th>Recent BPM</th>
+          <th>Recent BPF</th>
         </tr>
       </thead>
       <tbody id="footTableBody"></tbody>
     </table>
   </div>
 
-  <!-- Load scripts LAST -->
   <script src="FileSaver.min.js"></script>
   <script src="script.js"></script>
 </body>
