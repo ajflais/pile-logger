@@ -2,33 +2,41 @@ body {
   font-family: Arial, sans-serif;
   text-align: center;
   padding: 20px;
+  background: #f9f9f9;
 }
 
-#pileContainer {
-  position: relative;
-  height: 400px;
-  width: 80px;
-  margin: 20px auto;
+button {
+  margin: 10px;
+  padding: 12px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+input[type="number"] {
+  padding: 6px;
+  margin: 5px;
+  font-size: 16px;
+  width: 100px;
+}
+
+#pileVisual {
+  border: 1px solid #333;
+  background: white;
+  margin-top: 20px;
+  touch-action: none;
+  user-select: none;
+}
+
+table {
+  width: 90%;
+  margin-top: 20px;
+}
+
+th, td {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+}
+
+th {
   background-color: #f0f0f0;
-  border: 2px solid #444;
-}
-
-.tick {
-  position: absolute;
-  width: 100%;
-  height: 1px;
-  background-color: #aaa;
-  cursor: pointer;
-}
-
-.tick-label {
-  position: absolute;
-  left: 100%;
-  margin-left: 6px;
-  font-size: 12px;
-  background: #3498db;
-  color: white;
-  padding: 2px 6px;
-  border-radius: 4px;
-  cursor: pointer;
 }
