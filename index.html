@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pile Driving Logger</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <h1>Pile Driving Logger</h1>
@@ -15,15 +15,11 @@
     <p><strong>Blows/Foot:</strong> <span id="bpf">0</span></p>
   </div>
 
-  <div id="pileContainer" onclick="markHeight()">
-    <div id="pileBar"></div>
-    <div id="tickContainer"></div>
-  </div>
+  <div id="pileContainer"></div>
 
   <button onclick="recordBlow()">Record Blow</button>
   <button onclick="exportLog()">Export CSV</button>
 
-  <h2>Marked Foot Data</h2>
   <table id="footTable" border="1">
     <thead>
       <tr>
@@ -34,9 +30,7 @@
         <th>Blows/Ft</th>
       </tr>
     </thead>
-    <tbody id="footTableBody">
-      <!-- Live data rows go here -->
-    </tbody>
+    <tbody id="footTableBody"></tbody>
   </table>
 
   <script src="script.js"></script>
