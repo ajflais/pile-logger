@@ -57,7 +57,7 @@ function recordBlow() {
 
   updateBPFandVisual();
 
-  logData.push({ blow: blowCount, time: new Date(now).toISOString(), height: surfaceHeight });
+  logData.push({ blow: blowCount, time: formatDateTime(now), height: surfaceHeight });
 }
 
 function markHeight() {
@@ -133,7 +133,7 @@ function onPileClick(event) {
     const dx = clickX - tick.x;
     const dy = clickY - tick.y;
     if (dx * dx + dy * dy <= tick.radius * tick.radius) {
-      let newSurfaceHeight = pileHeight - tick.foot;
+      let newSurfaceHeight = pileHeight - Math.round(tick.foot);
       newSurfaceHeight = Math.max(0, Math.min(pileHeight, newSurfaceHeight));
 
       if (newSurfaceHeight !== surfaceHeight) {
@@ -145,7 +145,7 @@ function onPileClick(event) {
 
         const entry = {
           blow: blowCount,
-          time: new Date(now).toISOString(),
+          time: formatDateTime(now),
           height: newSurfaceHeight,
           bpm: bpm.toFixed(1),
           bpf: bpf.toFixed(1)
@@ -162,7 +162,7 @@ function onPileClick(event) {
           <td>${entry.bpm}</td>
           <td>${entry.bpf}</td>
         `;
-        tableBody.appendChild(row);
+        tableBody.insertBefore(row, tableBody.firstChild);
 
         surfaceHeight = newSurfaceHeight;
         document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
@@ -274,6 +274,19 @@ function listenForBlows() {
   }
 
   requestAnimationFrame(listenForBlows);
+}
+
+function formatDateTime(timestamp) {
+  const date = new Date(timestamp);
+  const options = {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  };
+  return date.toLocaleString(undefined, options);
 }
 
 canvas.addEventListener('click', onPileClick);
