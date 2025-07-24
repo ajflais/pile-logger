@@ -9,6 +9,11 @@ let micStream, audioContext, analyser, dataArray;
 
 const canvas = document.getElementById('pileVisual');
 const ctx = canvas.getContext('2d');
+canvas.width = 300;
+canvas.height = 80;
+
+let viewStart = 0;       // The first foot shown in the view window
+const viewWidth = 10;    // Show 10 feet width at a time
 
 function startLogging() {
   pileHeight = parseFloat(document.getElementById('pileHeight').value);
@@ -25,6 +30,7 @@ function startLogging() {
   startTime = null;
   blows = [];
   logData = [];
+  viewStart = 0;
 
   const mode = document.querySelector('input[name="mode"]:checked').value;
   micMode = mode === 'mic';
@@ -63,64 +69,140 @@ function updateBPFandVisual() {
   drawHorizontalPile();
 }
 
-// ----------- Canvas drawing and interaction -----------
-
 function drawHorizontalPile() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const barStartX = 20;
   const barEndX = canvas.width - 20;
   const barY = canvas.height / 2;
   const barHeight = 20;
-  const totalLength = pileHeight;
 
   // Draw gray background bar
   ctx.fillStyle = '#ccc';
   ctx.fillRect(barStartX, barY - barHeight / 2, barEndX - barStartX, barHeight);
 
-  // Draw driven portion in green
-  const drivenLength = totalLength - surfaceHeight;
-  const drivenPixels = ((drivenLength / totalLength) * (barEndX - barStartX));
-  ctx.fillStyle = '#0a0';
-  ctx.fillRect(barStartX, barY - barHeight / 2, drivenPixels, barHeight);
+  // Draw driven portion in green relative to visible window
+  // Calculate driven length in the view window range
+  const windowEnd = viewStart + viewWidth;
+  const visiblePenetrationStart = Math.max(viewStart, pileHeight - surfaceHeight);
+  const visiblePenetrationEnd = Math.min(windowEnd, pileHeight);
+  let drivenPixels = 0;
+  if (visiblePenetrationEnd > visiblePenetrationStart) {
+    const visiblePenetration = visiblePenetrationEnd - visiblePenetrationStart;
+    drivenPixels = (visiblePenetration / viewWidth) * (barEndX - barStartX);
+  }
+  const drivenStartPx = ((visiblePenetrationStart - viewStart) / viewWidth) * (barEndX - barStartX) + barStartX;
 
-  // Draw tick marks and labels every 5 ft
+  ctx.fillStyle = '#0a0';
+  ctx.fillRect(drivenStartPx, barY - barHeight / 2, drivenPixels, barHeight);
+
+  // Draw tick marks and labels every 1 ft (or 5 ft if preferred)
   ctx.fillStyle = '#000';
-  ctx.font = '12px sans-serif';
+  ctx.font = '14px sans-serif';
   ctx.textAlign = 'center';
-  const tickSpacing = 5;
-  const numTicks = Math.floor(totalLength / tickSpacing);
+
+  const tickSpacingFeet = 1; // change to 5 for fewer ticks
+  const numTicks = Math.floor(viewWidth / tickSpacingFeet);
 
   for (let i = 0; i <= numTicks; i++) {
-    const x = barStartX + (i * tickSpacing / totalLength) * (barEndX - barStartX);
+    const footMark = viewStart + i * tickSpacingFeet;
+    const x = barStartX + (i * tickSpacingFeet / viewWidth) * (barEndX - barStartX);
     ctx.beginPath();
     ctx.moveTo(x, barY - barHeight / 2);
-    ctx.lineTo(x, barY - barHeight / 2 - 8);
+    ctx.lineTo(x, barY - barHeight / 2 - 10);
     ctx.stroke();
 
-    ctx.fillText(`${i * tickSpacing} ft`, x, barY - barHeight / 2 - 12);
+    ctx.fillText(`${Math.round(footMark)} ft`, x, barY - barHeight / 2 - 15);
   }
 }
 
+// Calculate height from click and update surfaceHeight
 function onPileClick(event) {
   const rect = canvas.getBoundingClientRect();
   const clickX = (event.touches ? event.touches[0].clientX : event.clientX) - rect.left;
   const barStartX = 20;
   const barEndX = canvas.width - 20;
-  const totalLength = pileHeight;
 
   if (clickX < barStartX || clickX > barEndX) return;
 
   const relativeX = clickX - barStartX;
-  const newHeight = totalLength - ((relativeX / (barEndX - barStartX)) * totalLength);
+  const clickedFeet = viewStart + (relativeX / (barEndX - barStartX)) * viewWidth;
 
-  // Snap to nearest foot (change to 5 if you want 5 ft increments)
-  const snappedHeight = Math.round(newHeight);
+  // Convert clickedFeet to surfaceHeight (in pile coordinate system)
+  let newSurfaceHeight = pileHeight - clickedFeet;
+  if (newSurfaceHeight < 0) newSurfaceHeight = 0;
+  if (newSurfaceHeight > pileHeight) newSurfaceHeight = pileHeight;
 
-  if (snappedHeight >= 0 && snappedHeight <= totalLength && snappedHeight < surfaceHeight) {
-    surfaceHeight = snappedHeight;
+  if (newSurfaceHeight < surfaceHeight) {
+    surfaceHeight = newSurfaceHeight;
     document.getElementById('surfaceHeight').textContent = surfaceHeight.toFixed(2);
     updateBPFandVisual();
   }
+}
+
+// Swipe/drag logic
+let isDragging = false;
+let dragStartX = 0;
+let dragStartView = 0;
+
+canvas.addEventListener('mousedown', e => {
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartView = viewStart;
+});
+canvas.addEventListener('touchstart', e => {
+  isDragging = true;
+  dragStartX = e.touches[0].clientX;
+  dragStartView = viewStart;
+});
+canvas.addEventListener('mouseup', e => { isDragging = false; });
+canvas.addEventListener('touchend', e => { isDragging = false; });
+canvas.addEventListener('mouseleave', e => { isDragging = false; });
+canvas.addEventListener('touchcancel', e => { isDragging = false; });
+
+canvas.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const deltaX = e.clientX - dragStartX;
+  handleDrag(deltaX);
+});
+canvas.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  const deltaX = e.touches[0].clientX - dragStartX;
+  handleDrag(deltaX);
+});
+
+function handleDrag(deltaX) {
+  const barWidth = canvas.width - 40; // 20 px padding each side
+  const feetPerPixel = viewWidth / barWidth;
+  let newViewStart = dragStartView - deltaX * feetPerPixel;
+  if (newViewStart < 0) newViewStart = 0;
+  if (newViewStart > pileHeight - viewWidth) newViewStart = pileHeight - viewWidth;
+  viewStart = newViewStart;
+  drawHorizontalPile();
+}
+
+// Export CSV (no surface height restriction)
+function exportLog() {
+  if (logData.length === 0) {
+    alert("No data to export.");
+    return;
+  }
+
+  if (!confirm("Export pile driving log CSV now?")) {
+    return; // User canceled
+  }
+
+  let csvContent = "data:text/csv;charset=utf-8,Blow,Time,SurfaceHeight(ft)\n";
+  logData.forEach(row => {
+    csvContent += `${row.blow},${row.time},${row.height}\n`;
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `pile_log_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 function initPileCanvas() {
@@ -128,13 +210,6 @@ function initPileCanvas() {
   canvas.height = 80;
   drawHorizontalPile();
 }
-
-// Add event listeners for click and touch
-canvas.addEventListener('click', onPileClick);
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  onPileClick(e);
-});
 
 // ----------- Audio mode logic -----------
 
@@ -175,3 +250,10 @@ function listenForBlows() {
 
   requestAnimationFrame(listenForBlows);
 }
+
+// Setup event listeners for pile canvas interaction
+canvas.addEventListener('click', onPileClick);
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  onPileClick(e);
+});
