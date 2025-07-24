@@ -12,11 +12,12 @@ button {
   cursor: pointer;
 }
 
-input[type="number"] {
+input[type="number"],
+input[type="text"] {
   padding: 6px;
   margin: 5px;
   font-size: 16px;
-  width: 100px;
+  width: 150px;
 }
 
 #pileVisual {
@@ -39,4 +40,10 @@ th, td {
 
 th {
   background-color: #f0f0f0;
+}
+
+#displayPileName {
+  margin-top: 20px;
+  font-weight: bold;
+  font-size: 18px;
 }

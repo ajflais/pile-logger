@@ -8,6 +8,8 @@ let footLogData = [];
 let micMode = false;
 let micStream, audioContext, analyser, dataArray;
 
+let pileName = '';  // NEW global variable for pile name
+
 const canvas = document.getElementById('pileVisual');
 const ctx = canvas.getContext('2d');
 canvas.width = 300;
@@ -18,6 +20,9 @@ const viewWidth = 10;
 let tickPositions = [];
 
 function startLogging() {
+  pileName = document.getElementById('pileName').value.trim() || 'Unnamed Pile';
+  document.getElementById('displayPileName').textContent = `Pile Name: ${pileName}`;
+
   pileHeight = parseFloat(document.getElementById('pileHeight').value);
   if (isNaN(pileHeight) || pileHeight <= 0) {
     alert('Enter a valid pile height.');
@@ -156,6 +161,7 @@ function onPileClick(event) {
         const tableBody = document.getElementById('footTableBody');
         const row = document.createElement('tr');
         row.innerHTML = `
+          <td>${pileName}</td>
           <td>${entry.blow}</td>
           <td>${entry.time}</td>
           <td>${Math.round(entry.height)}</td>
@@ -219,9 +225,9 @@ function exportLog() {
 
   if (!confirm("Export pile driving log CSV now?")) return;
 
-  let csvContent = "data:text/csv;charset=utf-8,Blow,Time,SurfaceHeight(ft),BPM,BPF\n";
+  let csvContent = "data:text/csv;charset=utf-8,PileName,Blow,Time,SurfaceHeight(ft),BPM,BPF\n";
   footLogData.forEach(row => {
-    csvContent += `${row.blow},${row.time},${Math.round(row.height)},${row.bpm},${row.bpf}\n`;
+    csvContent += `${pileName},${row.blow},${row.time},${Math.round(row.height)},${row.bpm},${row.bpf}\n`;
   });
 
   const encodedUri = encodeURI(csvContent);
